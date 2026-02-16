@@ -196,93 +196,78 @@ window.eliminarMovimiento = async (id) => {
 window.verTodoComoAdmin = async () => {
     if (userUID !== ADMIN_UID) return;
 
-    Swal.fire({
-        title: 'Generando Reporte Maestro...',
+    Swal.fire({ 
+        title: 'Generando Reporte...', 
         didOpen: () => Swal.showLoading(),
-        background: '#111827',
-        color: '#fff'
+        background: '#111827', color: '#fff'
     });
-
+    
     try {
+        // Obtenemos el Snapshot del grupo de colecciones
         const querySnapshot = await getDocs(collectionGroup(db, 'transacciones'));
+        
         let totalIngresos = 0;
         let totalEgresos = 0;
         let filas = "";
 
-        const d = doc.data();
-        const nombreAMostrar = d.usuarioNombre || "Desconocido"; // Usamos el nuevo campo
-
+        // IMPORTANTE: Asegúrate de que el parámetro se llame 'doc' (o similar)
         querySnapshot.forEach((doc) => {
-            const d = doc.data();
+            // Extraemos los datos correctamente
+            const d = doc.data(); 
             const esIngreso = d.tipo === 'ingreso';
-
-            // Cálculos globales
+            const nombreUsuario = d.usuarioNombre || "Usuario Antiguo";
+            
             if (esIngreso) totalIngresos += d.monto;
             else totalEgresos += d.monto;
 
-            // Formato de cada fila
             filas += `
-            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
-                <td class="p-2 text-[10px] font-bold text-amber-500">${nombreAMostrar}</td>
-                <td class="p-2 text-left">
-                    <div class="text-sm font-bold text-gray-200">${d.desc || 'Sin título'}</div>
-                    <div class="text-[9px] text-gray-500 uppercase">${d.cat} | ${d.cuenta}</div>
-                </td>
-                <td class="p-2 text-right font-black ${esIngreso ? 'text-emerald-400' : 'text-rose-400'}">
-                    ${esIngreso ? '+' : '-'}RD$ ${d.monto.toLocaleString()}
-                </td>
-            </tr>
-        `;
+                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                    <td class="p-2">
+                        <div class="text-[10px] font-bold text-amber-500 truncate w-20">${nombreUsuario}</div>
+                    </td>
+                    <td class="p-2 text-left">
+                        <div class="text-sm font-bold text-gray-200">${d.desc || 'Sin título'}</div>
+                        <div class="text-[9px] text-gray-500 uppercase">${d.cat || 'General'}</div>
+                    </td>
+                    <td class="p-2 text-right font-black ${esIngreso ? 'text-emerald-400' : 'text-rose-400'}">
+                        ${esIngreso ? '+' : '-'}RD$ ${d.monto.toLocaleString()}
+                    </td>
+                </tr>
+            `;
         });
 
         const resumenHTML = `
-            <div class="text-left bg-gray-900 p-4 rounded-2xl border border-gray-700">
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                        <p class="text-[9px] uppercase text-emerald-500 font-bold">Total Ingresos</p>
-                        <p class="text-lg font-black text-emerald-400">RD$ ${totalIngresos.toLocaleString()}</p>
+            <div class="text-left bg-gray-900 p-2 rounded-xl border border-gray-700">
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20 text-center">
+                        <p class="text-[8px] uppercase text-emerald-500 font-bold">Ingresos</p>
+                        <p class="text-sm font-black text-emerald-400">RD$ ${totalIngresos.toLocaleString()}</p>
                     </div>
-                    <div class="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
-                        <p class="text-[9px] uppercase text-rose-500 font-bold">Total Egresos</p>
-                        <p class="text-lg font-black text-rose-400">RD$ ${totalEgresos.toLocaleString()}</p>
+                    <div class="bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 text-center">
+                        <p class="text-[8px] uppercase text-rose-500 font-bold">Egresos</p>
+                        <p class="text-sm font-black text-rose-400">RD$ ${totalEgresos.toLocaleString()}</p>
                     </div>
                 </div>
-                
-                <div class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                <div class="max-h-[350px] overflow-y-auto pr-1">
                     <table class="w-full text-xs">
-                        <thead class="sticky top-0 bg-gray-900 shadow-md text-gray-400 uppercase text-[9px]">
-                            <tr>
-                                <th class="p-2 text-left">UID</th>
-                                <th class="p-2 text-left">Detalle</th>
-                                <th class="p-2 text-right">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filas}
-                        </tbody>
+                        <tbody id="tablaAdminCuerpo">${filas || '<tr><td colspan="3" class="text-center p-4">No hay datos</td></tr>'}</tbody>
                     </table>
-                </div>
-                
-                <div class="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
-                    <p class="text-gray-400 text-[10px]">Beneficio Neto Estimado:</p>
-                    <p class="text-xl font-black text-white">RD$ ${(totalIngresos - totalEgresos).toLocaleString()}</p>
                 </div>
             </div>
         `;
 
         Swal.fire({
-            title: '<span class="text-amber-500">AUDITORÍA GLOBAL</span>',
+            title: '<span class="text-amber-500 text-lg font-black">PANEL GLOBAL</span>',
             html: resumenHTML,
-            width: '600px',
+            width: '95%',
             background: '#111827',
-            color: '#fff',
-            confirmButtonText: 'Cerrar Reporte',
+            confirmButtonText: 'Cerrar',
             confirmButtonColor: '#374151'
         });
 
     } catch (e) {
-        console.error(e);
-        Swal.fire('Error', 'No se pudo generar el reporte. Verifica los índices.', 'error');
+        console.error("Error en reporte:", e);
+        Swal.fire('Error', 'No se pudo leer la base de datos. ¿Creaste el índice?', 'error');
     }
 };
 
