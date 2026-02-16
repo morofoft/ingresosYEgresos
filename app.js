@@ -78,11 +78,41 @@ document.getElementById('btnOpenModal').onclick = async () => {
 
     if (f && f.montoBruto) {
         const montoFinal = calcularMonto(f.montoBruto);
+        
+        // 1. Guardar el movimiento original (el que llenaste en el modal)
         await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
-            desc: f.desc, tipo: f.tipo, cuenta: f.cuenta, cat: f.cat,
+            desc: f.desc, 
+            tipo: f.tipo, 
+            cuenta: f.cuenta, 
+            cat: f.cat,
             monto: montoFinal,
+            usuarioId: userUID,
             fecha: serverTimestamp()
         });
+    
+        // 2. Lógica Especial: Si mandas dinero a "Ahorros" desde el modal
+        // y seleccionaste que la cuenta destino es Ahorros...
+        if (f.cuenta === "Ahorros" && f.tipo === "ingreso") {
+            
+            // Generamos un egreso automático en "Efectivo" para balancear
+            await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
+                desc: `Traspaso a Ahorro: ${f.desc}`, 
+                tipo: "egreso", 
+                cuenta: "Efectivo", // Sale de aquí
+                cat: "Ahorros",
+                monto: montoFinal,
+                usuarioId: userUID,
+                fecha: serverTimestamp()
+            });
+    
+            Swal.fire({
+                title: '¡Ahorro registrado!',
+                text: `Se restaron RD$ ${montoFinal} de tu Efectivo automáticamente.`,
+                icon: 'info',
+                background: '#1f2937',
+                color: '#fff'
+            });
+        }
     }
 };
 
