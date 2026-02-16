@@ -78,35 +78,37 @@ document.getElementById('btnOpenModal').onclick = async () => {
 
     if (f && f.montoBruto) {
         const montoFinal = calcularMonto(f.montoBruto);
-        
+
         // 1. Guardar el movimiento original (el que llenaste en el modal)
         await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
-            desc: f.desc, 
-            tipo: f.tipo, 
-            cuenta: f.cuenta, 
+            desc: f.desc,
+            tipo: f.tipo,
+            cuenta: f.cuenta,
             cat: f.cat,
             monto: montoFinal,
             usuarioId: userUID,
+            usuarioNombre: auth.currentUser.displayName || "Usuario Anónimo",
             fecha: serverTimestamp()
         });
 
         console.log(f)
-    
+
         // 2. Lógica Especial: Si mandas dinero a "Ahorros" desde el modal
         // y seleccionaste que la cuenta destino es Ahorros...
         if (f.cuenta === "Ahorros" && f.tipo === "ingreso") {
-            
+
             // Generamos un egreso automático en "Efectivo" para balancear
             await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
-                desc: `Traspaso a Ahorro: ${f.desc}`, 
-                tipo: "egreso", 
+                desc: `Traspaso a Ahorro: ${f.desc}`,
+                tipo: "egreso",
                 cuenta: "Efectivo", // Sale de aquí
                 cat: "Ahorros",
                 monto: montoFinal,
                 usuarioId: userUID,
+                usuarioNombre: auth.currentUser.displayName || "Usuario Anónimo",
                 fecha: serverTimestamp()
             });
-    
+
             Swal.fire({
                 title: '¡Ahorro registrado!',
                 text: `Se restaron RD$ ${montoFinal} de tu Efectivo automáticamente.`,
@@ -121,7 +123,7 @@ document.getElementById('btnOpenModal').onclick = async () => {
 // --- 3. ESCUCHAR TRANSACCIONES EN TIEMPO REAL ---
 function escucharTransacciones() {
     const q = query(collection(db, "usuarios", userUID, "transacciones"), orderBy("fecha", "desc"));
-    
+
     onSnapshot(q, (snapshot) => {
         let total = 0, ing = 0, egr = 0;
         let cuentas = { Efectivo: 0, Banco: 0, Ahorros: 0 };
@@ -171,7 +173,7 @@ function escucharTransacciones() {
         document.getElementById('bal-efectivo').innerText = `RD$ ${cuentas.Efectivo.toLocaleString()}`;
         document.getElementById('bal-banco').innerText = `RD$ ${cuentas.Banco.toLocaleString()}`;
         document.getElementById('bal-ahorros').innerText = `RD$ ${cuentas.Ahorros.toLocaleString()}`;
-        
+
         actualizarGrafica(catsEgresos);
     });
 }
@@ -194,40 +196,43 @@ window.eliminarMovimiento = async (id) => {
 window.verTodoComoAdmin = async () => {
     if (userUID !== ADMIN_UID) return;
 
-    Swal.fire({ 
-        title: 'Generando Reporte Maestro...', 
+    Swal.fire({
+        title: 'Generando Reporte Maestro...',
         didOpen: () => Swal.showLoading(),
         background: '#111827',
         color: '#fff'
     });
-    
+
     try {
         const querySnapshot = await getDocs(collectionGroup(db, 'transacciones'));
         let totalIngresos = 0;
         let totalEgresos = 0;
         let filas = "";
 
+        const d = doc.data();
+        const nombreAMostrar = d.usuarioNombre || "Desconocido"; // Usamos el nuevo campo
+
         querySnapshot.forEach((doc) => {
             const d = doc.data();
             const esIngreso = d.tipo === 'ingreso';
-            
+
             // Cálculos globales
             if (esIngreso) totalIngresos += d.monto;
             else totalEgresos += d.monto;
 
             // Formato de cada fila
             filas += `
-                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
-                    <td class="p-2 text-[10px] font-mono text-gray-500">${doc.ref.parent.parent.id.substring(0, 5)}...</td>
-                    <td class="p-2 text-left">
-                        <div class="text-sm font-bold text-gray-200">${d.desc || 'Sin título'}</div>
-                        <div class="text-[9px] text-gray-500 uppercase">${d.cat} | ${d.cuenta}</div>
-                    </td>
-                    <td class="p-2 text-right font-black ${esIngreso ? 'text-emerald-400' : 'text-rose-400'}">
-                        ${esIngreso ? '+' : '-'}RD$ ${d.monto.toLocaleString()}
-                    </td>
-                </tr>
-            `;
+            <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                <td class="p-2 text-[10px] font-bold text-amber-500">${nombreAMostrar}</td>
+                <td class="p-2 text-left">
+                    <div class="text-sm font-bold text-gray-200">${d.desc || 'Sin título'}</div>
+                    <div class="text-[9px] text-gray-500 uppercase">${d.cat} | ${d.cuenta}</div>
+                </td>
+                <td class="p-2 text-right font-black ${esIngreso ? 'text-emerald-400' : 'text-rose-400'}">
+                    ${esIngreso ? '+' : '-'}RD$ ${d.monto.toLocaleString()}
+                </td>
+            </tr>
+        `;
         });
 
         const resumenHTML = `
@@ -296,7 +301,7 @@ function actualizarGrafica(dataCats) {
                 borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff'
             }]
         },
-        options: { 
+        options: {
             plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' }, padding: 20 } } },
             cutout: '75%'
         }
