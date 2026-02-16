@@ -89,6 +89,8 @@ document.getElementById('btnOpenModal').onclick = async () => {
             usuarioId: userUID,
             fecha: serverTimestamp()
         });
+
+        console.log(f)
     
         // 2. Lógica Especial: Si mandas dinero a "Ahorros" desde el modal
         // y seleccionaste que la cuenta destino es Ahorros...
