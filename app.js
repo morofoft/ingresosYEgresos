@@ -193,19 +193,91 @@ window.eliminarMovimiento = async (id) => {
 
 window.verTodoComoAdmin = async () => {
     if (userUID !== ADMIN_UID) return;
-    Swal.fire({ title: 'Cargando datos globales...', didOpen: () => Swal.showLoading() });
+
+    Swal.fire({ 
+        title: 'Generando Reporte Maestro...', 
+        didOpen: () => Swal.showLoading(),
+        background: '#111827',
+        color: '#fff'
+    });
     
     try {
         const querySnapshot = await getDocs(collectionGroup(db, 'transacciones'));
-        let logs = "";
+        let totalIngresos = 0;
+        let totalEgresos = 0;
+        let filas = "";
+
         querySnapshot.forEach((doc) => {
             const d = doc.data();
-            logs += `• ${d.desc}: RD$ ${d.monto} (${d.tipo})\n`;
+            const esIngreso = d.tipo === 'ingreso';
+            
+            // Cálculos globales
+            if (esIngreso) totalIngresos += d.monto;
+            else totalEgresos += d.monto;
+
+            // Formato de cada fila
+            filas += `
+                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors">
+                    <td class="p-2 text-[10px] font-mono text-gray-500">${doc.ref.parent.parent.id.substring(0, 5)}...</td>
+                    <td class="p-2 text-left">
+                        <div class="text-sm font-bold text-gray-200">${d.desc || 'Sin título'}</div>
+                        <div class="text-[9px] text-gray-500 uppercase">${d.cat} | ${d.cuenta}</div>
+                    </td>
+                    <td class="p-2 text-right font-black ${esIngreso ? 'text-emerald-400' : 'text-rose-400'}">
+                        ${esIngreso ? '+' : '-'}RD$ ${d.monto.toLocaleString()}
+                    </td>
+                </tr>
+            `;
         });
-        Swal.fire({ title: 'Reporte Global', text: logs || 'No hay datos' });
+
+        const resumenHTML = `
+            <div class="text-left bg-gray-900 p-4 rounded-2xl border border-gray-700">
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+                        <p class="text-[9px] uppercase text-emerald-500 font-bold">Total Ingresos</p>
+                        <p class="text-lg font-black text-emerald-400">RD$ ${totalIngresos.toLocaleString()}</p>
+                    </div>
+                    <div class="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
+                        <p class="text-[9px] uppercase text-rose-500 font-bold">Total Egresos</p>
+                        <p class="text-lg font-black text-rose-400">RD$ ${totalEgresos.toLocaleString()}</p>
+                    </div>
+                </div>
+                
+                <div class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    <table class="w-full text-xs">
+                        <thead class="sticky top-0 bg-gray-900 shadow-md text-gray-400 uppercase text-[9px]">
+                            <tr>
+                                <th class="p-2 text-left">UID</th>
+                                <th class="p-2 text-left">Detalle</th>
+                                <th class="p-2 text-right">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filas}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
+                    <p class="text-gray-400 text-[10px]">Beneficio Neto Estimado:</p>
+                    <p class="text-xl font-black text-white">RD$ ${(totalIngresos - totalEgresos).toLocaleString()}</p>
+                </div>
+            </div>
+        `;
+
+        Swal.fire({
+            title: '<span class="text-amber-500">AUDITORÍA GLOBAL</span>',
+            html: resumenHTML,
+            width: '600px',
+            background: '#111827',
+            color: '#fff',
+            confirmButtonText: 'Cerrar Reporte',
+            confirmButtonColor: '#374151'
+        });
+
     } catch (e) {
-        Swal.fire('Error', 'Debes crear un índice en Firebase. Revisa la consola.', 'error');
         console.error(e);
+        Swal.fire('Error', 'No se pudo generar el reporte. Verifica los índices.', 'error');
     }
 };
 
