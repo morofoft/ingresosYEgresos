@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, collectionGroup, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+let miGraficaTendencia = null;
 const firebaseConfig = {
     apiKey: "AIzaSyCFMgxlQfbv9I0iag7DPVZFOE2y5w0h2L4",
     authDomain: "mycash-4ff56.firebaseapp.com",
@@ -52,19 +53,23 @@ document.getElementById('btnOpenModal').onclick = async () => {
         html: `
             <input id="swal-amount" placeholder="Monto (ej: 500+200)" class="swal2-input">
             <input id="swal-desc" type="text" placeholder="Descripción" class="swal2-input">
-            <select id="swal-type" class="swal2-input">
+            <select id="swal-type" class="swal2-input bg-gray-700 !m-0 text-black">
                 <option value="egreso">Egreso (-)</option>
                 <option value="ingreso">Ingreso (+)</option>
             </select>
-            <select id="swal-acc" class="swal2-input">
-                <option value="Efectivo">Efectivo 💵</option>
-                <option value="Banco">Banco 💳</option>
-                <option value="Ahorros">Ahorros 🐷</option>
+            <select id="swal-acc" class="swal2-input bg-gray-700 !m-0 text-black">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Banco">Banco</option>
+                <option value="Ahorros">Ahorros</option>
             </select>
-            <select id="swal-cat" class="swal2-input">
-                <option value="Comida">Comida</option><option value="Transporte">Transporte</option>
-                <option value="Renta">Renta</option><option value="Ocio">Ocio</option>
-                <option value="Sueldo">Sueldo</option><option value="Otros">Otros</option>
+            <select id="swal-cat" class="swal2-input !m-0 text-black bg-gray-700">
+                <option value="Comida">Comida</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Renta">Renta</option>
+                <option value="Ocio">Ocio</option>
+                <option value="Sueldo">Sueldo</option>
+                <option value="Daneirys">Mi amor bello</option>
+                <option value="Otros">Otros</option>
             </select>
         `,
         preConfirm: () => ({
@@ -130,6 +135,7 @@ function escucharTransacciones() {
         let catsEgresos = {};
         const lista = document.getElementById('transactionList');
         lista.innerHTML = "";
+        let gastosPorDia = {};
 
         snapshot.forEach(docSnap => {
             const t = docSnap.data();
@@ -144,6 +150,15 @@ function escucharTransacciones() {
                 cuentas[t.cuenta] -= t.monto;
                 catsEgresos[t.cat] = (catsEgresos[t.cat] || 0) + t.monto;
             }
+
+            if (t.tipo === 'egreso' && t.fecha) {
+                // Convertimos el timestamp de Firebase a una fecha legible (YYYY-MM-DD)
+                const fechaKey = t.fecha.toDate().toISOString().split('T')[0];
+                gastosPorDia[fechaKey] = (gastosPorDia[fechaKey] || 0) + t.monto;
+            }
+
+            
+            actualizarGraficaTendencia(gastosPorDia);
 
             // Renderizado de lista
             lista.innerHTML += `
@@ -176,6 +191,7 @@ function escucharTransacciones() {
 
         actualizarGrafica(catsEgresos);
     });
+
 }
 
 // --- 4. FUNCIONES GLOBALES (ELIMINAR Y ADMIN) ---
@@ -294,3 +310,99 @@ function actualizarGrafica(dataCats) {
 }
 
 document.getElementById('btnLogout').onclick = () => signOut(auth);
+
+// --- LÓGICA DE LA CALCULADORA FLOTANTE ---
+let expresion = "";
+const display = document.getElementById('calc-display');
+
+window.calcIn = (val) => {
+    if (val === 'C') {
+        expresion = "";
+    } else if (val === 'DEL') {
+        expresion = expresion.slice(0, -1);
+    } else {
+        expresion += val;
+    }
+    display.innerText = expresion || "0";
+};
+
+// Abrir el modal y actualizar el balance rápido
+document.getElementById('btnFabCalc').onclick = () => {
+    const totalActual = document.getElementById('totalBalance').innerText;
+    document.getElementById('calc-total-balance').innerText = totalActual;
+    document.getElementById('modalCalc').classList.remove('hidden');
+};
+
+// Botón "LISTO": Pasa el monto al modal de registro
+document.getElementById('btnUsarMonto').onclick = async () => {
+    let resultado = 0;
+    try {
+        resultado = eval(expresion) || 0;
+    } catch {
+        return Swal.fire("Error", "Operación no válida", "error");
+    }
+
+    // Ocultar calculadora
+    document.getElementById('modalCalc').classList.add('hidden');
+    expresion = "";
+    display.innerText = "0";
+
+    // Abrir el modal de registro con el monto pre-llenado
+    // Nota: Reutiliza tu función btnOpenModal.onclick pero pasando el resultado
+    registrarConMonto(resultado);
+};
+
+// Función auxiliar para abrir el modal de registro con datos previos
+async function registrarConMonto(montoCalculado) {
+    // Aquí puedes llamar a la misma lógica de Swal.fire que ya tienes
+    // pero configurando el defaultValue del input de monto
+    document.getElementById('btnOpenModal').click(); 
+    
+    // Pequeño delay para dejar que Swal cargue y luego inyectar el valor
+    setTimeout(() => {
+        const inputMonto = document.getElementById('swal-amount');
+        if (inputMonto) inputMonto.value = montoCalculado;
+    }, 500);
+}
+
+function actualizarGraficaTendencia(datos) {
+    const ctx = document.getElementById('trendChart');
+    if (miGraficaTendencia) miGraficaTendencia.destroy();
+
+    // Ordenar las fechas cronológicamente
+    const fechasOrdenadas = Object.keys(datos).sort();
+    const montosOrdenados = fechasOrdenadas.map(f => datos[f]);
+
+    miGraficaTendencia = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: fechasOrdenadas.map(f => f.split('-')[2]), // Solo mostramos el día
+            datasets: [{
+                label: 'Gastos RD$',
+                data: montosOrdenados,
+                borderColor: '#f43f5e', // Rosa/Rojo
+                backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4, // Curva suave
+                pointRadius: 4,
+                pointBackgroundColor: '#f43f5e'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(156, 163, 175, 0.1)' },
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                }
+            }
+        }
+    });
+}

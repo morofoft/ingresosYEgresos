@@ -72,6 +72,12 @@
         <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
             <h3 class="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase mb-6 tracking-widest text-center">Distribución de Egresos</h3>
             <canvas id="expensesChart" class="max-h-[200px]"></canvas>
+
+            
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 class="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase mb-6 tracking-widest text-center">Tendencia de Gastos (30 días)</h3>
+            <canvas id="trendChart" class="max-h-[200px]"></canvas>
         </div>
 
         <div class="space-y-4">
@@ -97,6 +103,58 @@
             <i class="fas fa-plus"></i>
             Registrar Movimiento
         </button>
+    </div>
+
+    <div class="fixed bottom-6 right-6 z-50">
+        <button id="btnFabCalc" class="w-16 h-16 bg-emerald-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+            <i class="fas fa-calculator fa-lg"></i>
+        </button>
+    </div>
+    
+    <div id="modalCalc" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 w-full max-w-xs rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-700">
+            <div class="p-6 bg-gray-900/50">
+                <div class="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
+                    <span>Tu Balance</span>
+                    <span id="calc-date">HOY</span>
+                </div>
+                <div class="text-2xl font-black text-white mb-4">RD$ <span id="calc-total-balance">0.00</span></div>
+                
+                <div id="calc-display" class="bg-gray-800 p-4 rounded-2xl text-right text-2xl font-mono text-emerald-400 min-h-[60px] break-all border border-gray-700">
+                    0
+                </div>
+            </div>
+    
+            <div class="grid grid-cols-4 gap-1 p-4 bg-gray-800">
+                <button onclick="calcIn('C')" class="h-14 rounded-2xl bg-rose-500/20 text-rose-500 font-bold">C</button>
+                <button onclick="calcIn('/')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">/</button>
+                <button onclick="calcIn('*')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">*</button>
+                <button onclick="calcIn('DEL')" class="h-14 rounded-2xl bg-gray-700 text-gray-400"><i class="fas fa-backspace"></i></button>
+                <button onclick="calcIn('7')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">7</button>
+                <button onclick="calcIn('8')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">8</button>
+                <button onclick="calcIn('9')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">9</button>
+                <button onclick="calcIn('-')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">-</button>
+                
+                <button onclick="calcIn('4')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">4</button>
+                <button onclick="calcIn('5')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">5</button>
+                <button onclick="calcIn('6')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">6</button>
+                <button onclick="calcIn('+')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">+</button>
+                
+                <div class="col-span-3 grid grid-cols-3 gap-1">
+                    <button onclick="calcIn('1')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">1</button>
+                    <button onclick="calcIn('2')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">2</button>
+                    <button onclick="calcIn('3')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">3</button>
+                    <button onclick="calcIn('0')" class="h-14 col-span-2 rounded-2xl bg-gray-700 text-white font-bold">0</button>
+                    <button onclick="calcIn('.')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">.</button>
+                </div>
+                
+                <button id="btnUsarMonto" class="h-full rounded-2xl bg-emerald-500 text-white font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-500/20">
+                    <i class="fas fa-check"></i>
+                    <span class="text-[10px]">LISTO</span>
+                </button>
+            </div>
+            <button onclick="document.getElementById('modalCalc').classList.add('hidden')" class="w-full py-3 text-gray-500 text-xs font-bold hover:text-white transition-colors">CERRAR</button>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
