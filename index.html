@@ -1,162 +1,329 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyCash DOP | Control Total</title>
+    <title>MyCash DOP | Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .swal2-input { color: white !important; }
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .swal2-popup {
+            border-radius: 2rem !important;
+            background: #1f2937 !important;
+            color: white !important;
+        }
+
+        .swal2-input {
+            color: white !important;
+            border-radius: 1rem !important;
+            background: #374151 !important;
+            border: none !important;
+        }
+
+        .monto-sensible {
+            transition: all 0.3s ease;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* Estilo para la pantalla de bloqueo por PIN */
+        #pin-screen {
+            backdrop-filter: blur(20px);
+            background-color: rgba(15, 23, 42, 0.9);
+        }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen transition-colors duration-300">
 
-    <header class="p-5 flex justify-between items-center bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 shadow-sm">
-        <div class="flex items-center gap-2">
-            <div class="bg-emerald-500 p-2 rounded-lg text-white">
-                <i class="fas fa-wallet"></i>
+<body class="bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-white min-h-screen transition-colors duration-300">
+
+    <header
+        class="p-5 flex justify-between items-center bg-white dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-500 p-2.5 rounded-2xl text-white shadow-lg shadow-emerald-500/30">
+                <i class="fas fa-wallet text-lg"></i>
             </div>
-            <h1 class="text-xl font-extrabold tracking-tight">MyCash <span class="text-emerald-500 text-sm">By Pedro Garcia</span></h1>
+            <div>
+                <h1 class="text-lg font-black tracking-tighter leading-none">MyCash</h1>
+                <span class="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Premium Edition</span>
+            </div>
         </div>
-        <div class="flex items-center gap-4">
-            <button onclick="document.documentElement.classList.toggle('dark')" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all">
+
+        <div class="flex items-center gap-2">
+            <button onclick="document.documentElement.classList.toggle('dark')"
+                class="w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl transition-all">
                 <i class="fas fa-moon dark:hidden"></i>
                 <i class="fas fa-sun hidden dark:block"></i>
             </button>
-            <button id="btnLogout" class="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                <i class="fas fa-sign-out-alt fa-lg"></i>
+            <button id="btnLogout"
+                class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </header>
 
-    <main class="p-4 max-w-md mx-auto pb-24">
-        
-        <div id="adminPanel" class="hidden mb-6 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl">
-            <p class="text-amber-800 dark:text-amber-400 text-xs font-bold flex items-center gap-2 uppercase tracking-tighter">
-                <i class="fas fa-user-shield"></i> Modo Administrador Activo
+    <main class="p-4 max-w-md mx-auto pb-32">
+
+        <div
+            class="bg-white dark:bg-gray-900 p-4 rounded-[2rem] mb-6 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-500/10 p-3 rounded-2xl text-amber-500">
+                    <i class="fas fa-coins text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] uppercase font-black text-gray-400 tracking-widest">Diferencia de Caja</p>
+                    <div class="flex items-center gap-2">
+                        <span id="diff-monto" class="text-sm font-black dark:text-white">RD$ 0</span>
+                        <span id="diff-status"
+                            class="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold uppercase">Cuadrado</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="realizarArqueo()"
+                class="bg-gray-100 dark:bg-gray-800 p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:scale-105 active:scale-95 transition-all">
+                <i class="fas fa-calculator text-xs"></i>
+            </button>
+        </div>
+
+        <div id="adminPanel"
+            class="hidden mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-[2rem] items-center justify-between flex">
+            <p class="text-amber-500 text-[10px] font-black uppercase tracking-tighter">
+                <i class="fas fa-user-shield mr-2"></i> Panel de Control Global
             </p>
-            <button onclick="verTodoComoAdmin()" class="mt-2 text-[10px] bg-amber-500 text-white px-2 py-1 rounded">Ver logs globales</button>
+            <button onclick="verTodoComoAdmin()"
+                class="text-[9px] bg-amber-500 text-white px-3 py-1.5 rounded-xl font-bold uppercase shadow-lg shadow-amber-500/20">Ver
+                Logs</button>
         </div>
 
-        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-[2rem] p-8 shadow-2xl shadow-emerald-500/20 mb-6 relative overflow-hidden">
+        <div
+            class="bg-gradient-to-br from-emerald-600 to-teal-800 rounded-[2.5rem] p-8 shadow-2xl shadow-emerald-500/20 mb-8 relative overflow-hidden">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-            <p class="text-emerald-100 text-xs uppercase font-bold tracking-[0.2em] mb-1">Balance Consolidado</p>
-            <h2 class="text-4xl font-black tracking-tight">RD$ <span id="totalBalance">0.00</span></h2>
+            <div class="flex justify-between items-start mb-2">
+                <p class="text-emerald-100 text-[10px] uppercase font-bold tracking-[0.2em] opacity-80">Saldo Total
+                    Disponible</p>
+                <button onclick="togglePrivacy()" class="text-emerald-100/50 hover:text-white transition-all">
+                    <i id="privacyIcon" class="fas fa-eye text-sm"></i>
+                </button>
+            </div>
+            <h2 class="text-4xl font-black tracking-tighter text-white">RD$ <span id="totalBalance"
+                    class="monto-sensible">0.00</span></h2>
         </div>
 
-        <div class="flex gap-2 overflow-x-auto pb-4 mb-4 no-scrollbar">
-            <div class="min-w-[120px] bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-                <p class="text-[10px] text-gray-400 uppercase font-bold">Efectivo</p>
-                <p class="font-bold text-emerald-500" id="bal-efectivo">RD$ 0</p>
+        <div class="flex gap-3 overflow-x-auto pb-6 mb-2 no-scrollbar">
+            <div
+                class="min-w-[140px] bg-white dark:bg-gray-900 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+                <p class="text-[9px] text-gray-400 uppercase font-black mb-1 tracking-widest">Efectivo</p>
+                <p class="text-sm font-black text-emerald-500 monto-sensible" id="bal-efectivo">RD$ 0</p>
             </div>
-            <div class="min-w-[120px] bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-                <p class="text-[10px] text-gray-400 uppercase font-bold">Banco</p>
-                <p class="font-bold text-blue-500" id="bal-banco">RD$ 0</p>
+            <div
+                class="min-w-[140px] bg-white dark:bg-gray-900 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+                <p class="text-[9px] text-gray-400 uppercase font-black mb-1 tracking-widest">Banco</p>
+                <p class="text-sm font-black text-blue-500 monto-sensible" id="bal-banco">RD$ 0</p>
             </div>
-            <div class="min-w-[120px] bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
-                <p class="text-[10px] text-gray-400 uppercase font-bold">Ahorros</p>
-                <p class="font-bold text-amber-500" id="bal-ahorros">RD$ 0</p>
+            <div
+                class="min-w-[140px] bg-white dark:bg-gray-900 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+                <p class="text-[9px] text-gray-400 uppercase font-black mb-1 tracking-widest">Ahorros</p>
+                <p class="text-sm font-black text-amber-500 monto-sensible" id="bal-ahorros">RD$ 0</p>
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 class="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase mb-6 tracking-widest text-center">Distribución de Egresos</h3>
-            <canvas id="expensesChart" class="max-h-[200px]"></canvas>
+        <section
+            class="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="text-[10px] uppercase font-black text-gray-400 tracking-widest">Suscripciones Fijas</h4>
+                <button onclick="nuevoGastoFijo()"
+                    class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-full text-[10px] font-black">+
+                    AGREGAR</button>
+            </div>
+            <div id="listaGastosFijos" class="space-y-3">
+            </div>
+        </section>
 
-            
+        <section
+            class="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h4 class="text-[10px] uppercase font-black text-gray-400 tracking-widest">Piggy Bank</h4>
+                    <p class="text-[9px] text-emerald-500 font-bold uppercase">Tus Metas de Ahorro</p>
+                </div>
+                <button onclick="nuevaMetaAhorro()"
+                    class="bg-emerald-500 text-white w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">+</button>
+            </div>
+            <div id="listaMetas" class="space-y-4">
+            </div>
+        </section>
+
+        <div
+            class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-6 shadow-xl mb-8 relative overflow-hidden text-white">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                    <i class="fas fa-robot text-lg"></i>
+                </div>
+                <h4 class="text-xs font-black uppercase tracking-widest">Análisis de IA MyCash</h4>
+            </div>
+            <p id="ia-consejo" class="text-xs leading-relaxed opacity-90 italic">
+                "Analizando tus patrones de gasto... dame un momento."
+            </p>
         </div>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] mb-8 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 class="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase mb-6 tracking-widest text-center">Tendencia de Gastos (30 días)</h3>
-            <canvas id="trendChart" class="max-h-[200px]"></canvas>
+
+        <div class="space-y-4 mb-8">
+            <div class="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800">
+                <h3 class="text-gray-400 text-[9px] font-black uppercase mb-6 tracking-widest text-center">Tendencia de
+                    Gastos</h3>
+                <canvas id="trendChart" class="max-h-[180px]"></canvas>
+            </div>
+            <div class="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800">
+                <h3 class="text-gray-400 text-[9px] font-black uppercase mb-6 tracking-widest text-center">Distribución
+                    de Egresos</h3>
+                <canvas id="expensesChart" class="max-h-[180px]"></canvas>
+            </div>
         </div>
 
         <div class="space-y-4">
-            <div class="flex justify-between items-center px-1">
-                <h3 class="font-black text-lg tracking-tight">Movimientos</h3>
-                <span class="text-[10px] bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full text-gray-500 uppercase font-bold">Recientes</span>
+            <div class="flex justify-between items-center px-2">
+                <h3 class="font-black text-xl tracking-tighter">Actividad Reciente</h3>
+                <span
+                    class="text-[10px] bg-gray-200 dark:bg-gray-800 px-3 py-1 rounded-full text-gray-500 font-black uppercase">Historial</span>
             </div>
-            
+
             <div id="transactionList" class="space-y-3">
-                <div class="animate-pulse flex space-x-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl">
-                    <div class="rounded-full bg-gray-300 dark:bg-gray-700 h-10 w-10"></div>
-                    <div class="flex-1 space-y-4 py-1">
-                        <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
-                        <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                    </div>
-                </div>
+                <div class="animate-pulse bg-white dark:bg-gray-900 p-4 rounded-[2rem] h-20"></div>
             </div>
         </div>
     </main>
 
-    <div class="fixed bottom-6 left-0 right-0 flex justify-center z-40">
-        <button id="btnOpenModal" class="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full shadow-2xl shadow-emerald-500/40 flex items-center gap-3 font-bold transition-all hover:scale-105 active:scale-95">
+    <div class="fixed bottom-8 left-0 right-0 flex justify-center items-center gap-4 z-50 pointer-events-none">
+        <button id="btnFabCalc"
+            class="pointer-events-auto w-14 h-14 bg-gray-800 dark:bg-gray-700 text-white rounded-2xl shadow-xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all border border-gray-700">
+            <i class="fas fa-calculator text-lg"></i>
+        </button>
+
+        <button id="btnOpenModal"
+            class="pointer-events-auto bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-5 rounded-[2rem] shadow-2xl shadow-emerald-500/40 flex items-center gap-3 font-black text-sm transition-all hover:scale-105 active:scale-95">
             <i class="fas fa-plus"></i>
-            Registrar Movimiento
+            NUEVO MOVIMIENTO
         </button>
     </div>
 
-    <div class="fixed bottom-6 right-6 z-50">
-        <button id="btnFabCalc" class="w-16 h-16 bg-emerald-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
-            <i class="fas fa-calculator fa-lg"></i>
-        </button>
-    </div>
-    
-    <div id="modalCalc" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
-        <div class="bg-gray-800 w-full max-w-xs rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-700">
-            <div class="p-6 bg-gray-900/50">
-                <div class="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
-                    <span>Tu Balance</span>
-                    <span id="calc-date">HOY</span>
+    <div id="modalCalc"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-6">
+        <div class="bg-gray-900 w-full max-w-xs rounded-[3rem] overflow-hidden shadow-2xl border border-gray-800">
+            <div class="p-8 bg-gray-900/50">
+                <div class="flex justify-between text-[10px] text-gray-500 font-black uppercase tracking-widest mb-4">
+                    <span>Cálculo Rápido</span>
+                    <i class="fas fa-percent text-emerald-500"></i>
                 </div>
-                <div class="text-2xl font-black text-white mb-4">RD$ <span id="calc-total-balance">0.00</span></div>
-                
-                <div id="calc-display" class="bg-gray-800 p-4 rounded-2xl text-right text-2xl font-mono text-emerald-400 min-h-[60px] break-all border border-gray-700">
+                <div id="calc-display"
+                    class="bg-gray-800 p-6 rounded-3xl text-right text-3xl font-mono text-emerald-400 min-h-[80px] break-all border border-gray-700 shadow-inner">
                     0
                 </div>
             </div>
-    
-            <div class="grid grid-cols-4 gap-1 p-4 bg-gray-800">
-                <button onclick="calcIn('C')" class="h-14 rounded-2xl bg-rose-500/20 text-rose-500 font-bold">C</button>
-                <button onclick="calcIn('/')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">/</button>
-                <button onclick="calcIn('*')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">*</button>
-                <button onclick="calcIn('DEL')" class="h-14 rounded-2xl bg-gray-700 text-gray-400"><i class="fas fa-backspace"></i></button>
-                <button onclick="calcIn('7')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">7</button>
-                <button onclick="calcIn('8')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">8</button>
-                <button onclick="calcIn('9')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">9</button>
-                <button onclick="calcIn('-')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">-</button>
-                
-                <button onclick="calcIn('4')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">4</button>
-                <button onclick="calcIn('5')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">5</button>
-                <button onclick="calcIn('6')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">6</button>
-                <button onclick="calcIn('+')" class="h-14 rounded-2xl bg-gray-700 text-emerald-500 font-bold">+</button>
-                
-                <div class="col-span-3 grid grid-cols-3 gap-1">
-                    <button onclick="calcIn('1')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">1</button>
-                    <button onclick="calcIn('2')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">2</button>
-                    <button onclick="calcIn('3')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">3</button>
-                    <button onclick="calcIn('0')" class="h-14 col-span-2 rounded-2xl bg-gray-700 text-white font-bold">0</button>
-                    <button onclick="calcIn('.')" class="h-14 rounded-2xl bg-gray-700 text-white font-bold">.</button>
+
+            <div class="grid grid-cols-4 gap-2 p-6 bg-gray-900">
+                <button onclick="calcIn('C')"
+                    class="h-14 rounded-2xl bg-rose-500/10 text-rose-500 font-black text-xl">C</button>
+                <button onclick="calcIn('/')"
+                    class="h-14 rounded-2xl bg-gray-800 text-emerald-500 font-black text-xl">/</button>
+                <button onclick="calcIn('*')"
+                    class="h-14 rounded-2xl bg-gray-800 text-emerald-500 font-black text-xl">*</button>
+                <button onclick="calcIn('DEL')" class="h-14 rounded-2xl bg-gray-800 text-gray-500"><i
+                        class="fas fa-backspace"></i></button>
+
+                <button onclick="calcIn('7')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">7</button>
+                <button onclick="calcIn('8')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">8</button>
+                <button onclick="calcIn('9')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">9</button>
+                <button onclick="calcIn('-')"
+                    class="h-14 rounded-2xl bg-gray-800 text-emerald-500 font-black text-xl">-</button>
+
+                <button onclick="calcIn('4')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">4</button>
+                <button onclick="calcIn('5')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">5</button>
+                <button onclick="calcIn('6')"
+                    class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">6</button>
+                <button onclick="calcIn('+')"
+                    class="h-14 rounded-2xl bg-gray-800 text-emerald-500 font-black text-xl">+</button>
+
+                <div class="col-span-3 grid grid-cols-3 gap-2">
+                    <button onclick="calcIn('1')"
+                        class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">1</button>
+                    <button onclick="calcIn('2')"
+                        class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">2</button>
+                    <button onclick="calcIn('3')"
+                        class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">3</button>
+                    <button onclick="calcIn('0')"
+                        class="h-14 col-span-2 rounded-2xl bg-gray-800 text-white font-bold text-xl">0</button>
+                    <button onclick="calcIn('.')"
+                        class="h-14 rounded-2xl bg-gray-800 text-white font-bold text-xl">.</button>
                 </div>
-                
-                <button id="btnUsarMonto" class="h-full rounded-2xl bg-emerald-500 text-white font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-500/20">
-                    <i class="fas fa-check"></i>
-                    <span class="text-[10px]">LISTO</span>
+
+                <button id="btnUsarMonto"
+                    class="h-full rounded-2xl bg-emerald-500 text-white font-black flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-500/20">
+                    <i class="fas fa-check text-xl"></i>
+                    <span class="text-[8px] uppercase">Listo</span>
                 </button>
             </div>
-            <button onclick="document.getElementById('modalCalc').classList.add('hidden')" class="w-full py-3 text-gray-500 text-xs font-bold hover:text-white transition-colors">CERRAR</button>
+            <button onclick="document.getElementById('modalCalc').classList.add('hidden')"
+                class="w-full py-5 text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] hover:text-white transition-colors">Cerrar
+                Calculadora</button>
+        </div>
+    </div>
+
+    <div id="pin-screen" class="fixed inset-0 z-[100] hidden flex flex-col items-center justify-center text-white">
+        <div class="bg-emerald-500 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-emerald-500/40">
+            <i class="fas fa-lock text-2xl"></i>
+        </div>
+        <h2 class="text-xl font-black mb-8 tracking-tighter text-center">INGRESA TU PIN <br><span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Seguridad MyCash Pro</span></h2>
+        <div id="pin-dots" class="flex gap-4 mb-12">
+            <div class="w-4 h-4 rounded-full border-2 border-gray-600"></div>
+            <div class="w-4 h-4 rounded-full border-2 border-gray-600"></div>
+            <div class="w-4 h-4 rounded-full border-2 border-gray-600"></div>
+            <div class="w-4 h-4 rounded-full border-2 border-gray-600"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-6">
+            <button onclick="pressPin('1')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">1</button>
+            <button onclick="pressPin('2')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">2</button>
+            <button onclick="pressPin('3')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">3</button>
+            <button onclick="pressPin('4')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">4</button>
+            <button onclick="pressPin('5')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">5</button>
+            <button onclick="pressPin('6')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">6</button>
+            <button onclick="pressPin('7')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">7</button>
+            <button onclick="pressPin('8')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">8</button>
+            <button onclick="pressPin('9')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">9</button>
+            <span></span>
+            <button onclick="pressPin('0')" class="w-16 h-16 bg-gray-800 rounded-full text-xl font-bold active:bg-emerald-500">0</button>
+            <button onclick="clearPin()" class="w-16 h-16 text-rose-500 flex items-center justify-center"><i class="fas fa-backspace"></i></button>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
 </body>
+
 </html>

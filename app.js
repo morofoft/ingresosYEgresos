@@ -15,6 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+let totalEfectivo = 0;
 
 // --- CONFIGURACIÓN ADMIN ---
 const ADMIN_UID = "gmxIdkUYJYY3P7rVN0aC6VTnBeb2"; // Reemplaza esto con tu UID de la consola
@@ -136,10 +137,16 @@ function escucharTransacciones() {
         const lista = document.getElementById('transactionList');
         lista.innerHTML = "";
         let gastosPorDia = {};
+        let tempEfectivo = 0;
 
         snapshot.forEach(docSnap => {
             const t = docSnap.data();
             const id = docSnap.id;
+
+            if (t.cuenta === 'Efectivo') {
+                tempEfectivo += (t.tipo === 'ingreso' ? t.monto : -t.monto);
+            }
+            totalEfectivo = tempEfectivo;
 
             // Totales e Ingresos/Egresos
             if (t.tipo === 'ingreso') {
@@ -406,3 +413,355 @@ function actualizarGraficaTendencia(datos) {
         }
     });
 }
+
+window.realizarArqueo = async () => {
+    const { value: saldoReal } = await Swal.fire({
+        title: 'Arqueo de Efectivo',
+        input: 'number',
+        inputLabel: `En la app tienes RD$ ${totalEfectivo.toLocaleString()}. ¿Cuánto tienes en la mano?`,
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#f59e0b',
+        showCancelButton: true
+    });
+
+    if (saldoReal !== null && saldoReal !== "") {
+        const diferencia = parseFloat(saldoReal) - totalEfectivo;
+        
+        if (diferencia === 0) {
+            Swal.fire('¡Perfecto!', 'Tu caja está cuadrada.', 'success');
+        } else {
+            const mensaje = diferencia < 0 
+                ? `Te faltan RD$ ${Math.abs(diferencia).toLocaleString()}` 
+                : `Te sobran RD$ ${diferencia.toLocaleString()}`;
+
+            Swal.fire({
+                title: 'Descuadre detectado',
+                text: mensaje,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ajustar Automáticamente',
+                cancelButtonText: 'Cerrar',
+                background: '#111827',
+                color: '#fff'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    aplicarAjusteCaja(diferencia);
+                }
+            });
+        }
+    }
+};
+
+function actualizarUIDiferencia(diff) {
+    const montoEl = document.getElementById('diff-monto');
+    const statusEl = document.getElementById('diff-status');
+    const msgEl = document.getElementById('diff-msg');
+
+    montoEl.innerText = `RD$ ${diff.toLocaleString()}`;
+
+    if (diff === 0) {
+        statusEl.innerText = "Cuadrado";
+        statusEl.className = "text-[10px] font-bold pb-1 uppercase text-emerald-500";
+        msgEl.innerText = "Tu efectivo coincide con los registros.";
+    } else if (diff < 0) {
+        statusEl.innerText = "Faltante";
+        statusEl.className = "text-[10px] font-bold pb-1 uppercase text-rose-500";
+        msgEl.innerText = `Hay un descuadre de RD$ ${Math.abs(diff).toLocaleString()}. Revisa tus gastos recientes.`;
+    } else {
+        statusEl.innerText = "Sobrante";
+        statusEl.className = "text-[10px] font-bold pb-1 uppercase text-amber-500";
+        msgEl.innerText = `Tienes dinero extra. Quizás un ingreso no registrado.`;
+    }
+}
+
+let privacyMode = localStorage.getItem('privacyMode') === 'true';
+
+window.togglePrivacy = () => {
+    privacyMode = !privacyMode;
+    localStorage.setItem('privacyMode', privacyMode);
+    aplicarPrivacidad();
+};
+
+function aplicarPrivacidad() {
+    const icon = document.getElementById('privacyIcon');
+    const montos = document.querySelectorAll('.monto-sensible'); // Añade esta clase a tus balances en el HTML
+    
+    icon.className = privacyMode ? 'fas fa-eye-slash' : 'fas fa-eye';
+    
+    montos.forEach(el => {
+        if (privacyMode) {
+            el.dataset.valor = el.innerText; // Guarda el valor real
+            el.innerText = 'RD$ •••••';
+        } else {
+            // Al desactivar, la UI se refrescará con los datos reales de Firebase automáticamente
+            location.reload(); 
+        }
+    });
+}
+
+// Guardar un nuevo gasto fijo en localStorage
+window.nuevoGastoFijo = async () => {
+    const { value: formValues } = await Swal.fire({
+        title: 'Nuevo Gasto Fijo',
+        background: '#1f2937',
+        color: '#fff',
+        html:
+            '<input id="gf-desc" class="swal2-input" placeholder="Descripción (ej: Netflix)">' +
+            '<input id="gf-monto" type="number" class="swal2-input" placeholder="Monto">',
+        focusConfirm: false,
+        preConfirm: () => {
+            return {
+                desc: document.getElementById('gf-desc').value,
+                monto: document.getElementById('gf-monto').value
+            }
+        }
+    });
+
+    if (formValues && formValues.desc && formValues.monto) {
+        let fijos = JSON.parse(localStorage.getItem('gastosFijos')) || [];
+        fijos.push(formValues);
+        localStorage.setItem('gastosFijos', JSON.stringify(fijos));
+        renderGastosFijos();
+    }
+};
+
+// Dibujar la lista de gastos fijos
+function renderGastosFijos() {
+    const contenedor = document.getElementById('listaGastosFijos');
+    const fijos = JSON.parse(localStorage.getItem('gastosFijos')) || [];
+    
+    contenedor.innerHTML = fijos.length === 0 ? '<p class="text-[10px] text-gray-500 italic text-center">No tienes gastos programados</p>' : '';
+
+    fijos.forEach((g, index) => {
+        contenedor.innerHTML += `
+            <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-3 rounded-2xl">
+                <div>
+                    <p class="text-xs font-bold text-gray-700 dark:text-gray-200">${g.desc}</p>
+                    <p class="text-[10px] text-emerald-500 font-bold">RD$ ${parseFloat(g.monto).toLocaleString()}</p>
+                </div>
+                <button onclick="pagarGastoFijo(${index})" class="bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-lg font-bold shadow-md active:scale-95">
+                    PAGAR
+                </button>
+            </div>
+        `;
+    });
+}
+
+// Registrar el gasto en Firebase al presionar "PAGAR"
+window.pagarGastoFijo = async (index) => {
+    const fijos = JSON.parse(localStorage.getItem('gastosFijos'));
+    const gasto = fijos[index];
+
+    try {
+        await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
+            desc: "Pago: " + gasto.desc,
+            monto: parseFloat(gasto.monto),
+            tipo: "egreso",
+            cat: "Servicios",
+            cuenta: "Efectivo", // Puedes hacerlo dinámico si quieres
+            fecha: serverTimestamp(),
+            usuarioNombre: auth.currentUser.displayName
+        });
+        Swal.fire({ icon: 'success', title: '¡Pago registrado!', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+// Llamar al cargar la app
+renderGastosFijos();
+
+// --- FUNCIÓN DE AJUSTE AUTOMÁTICO ---
+window.aplicarAjusteCaja = async (diferencia) => {
+    if (diferencia === 0) return;
+
+    const tipo = diferencia > 0 ? 'ingreso' : 'egreso';
+    const desc = diferencia > 0 ? 'Ajuste: Sobrante de Caja' : 'Ajuste: Faltante de Caja';
+    const montoAbsoluto = Math.abs(diferencia);
+
+    const confirmar = await Swal.fire({
+        title: '¿Sincronizar saldos?',
+        text: `Se creará un registro de ${tipo} por RD$ ${montoAbsoluto.toLocaleString()} para cuadrar tu efectivo.`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, ajustar',
+        cancelButtonText: 'No, lo buscaré yo',
+        background: '#1f2937',
+        color: '#fff',
+        confirmButtonColor: '#10b981'
+    });
+
+    if (confirmar.isConfirmed) {
+        try {
+            await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
+                desc: desc,
+                monto: montoAbsoluto,
+                tipo: tipo,
+                cat: "Otros",
+                cuenta: "Efectivo",
+                fecha: serverTimestamp(),
+                usuarioNombre: auth.currentUser.displayName || 'Usuario'
+            });
+
+            Swal.fire({
+                title: '¡Caja Cuadrada!',
+                text: 'Tu saldo contable ahora coincide con tu dinero real.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error("Error al ajustar:", error);
+            Swal.fire('Error', 'No se pudo realizar el ajuste', 'error');
+        }
+    }
+};
+
+window.nuevaMetaAhorro = async () => {
+    const { value: formValues } = await Swal.fire({
+        title: 'Nueva Meta de Ahorro',
+        background: '#1f2937',
+        color: '#fff',
+        html: `
+            <input id="meta-name" class="swal2-input !m-0 w-full mb-3" placeholder="Nombre (ej: Carro)">
+            <input id="meta-objetivo" type="number" class="swal2-input !m-0 w-full" placeholder="Monto Objetivo">
+        `,
+        preConfirm: () => ({
+            nombre: document.getElementById('meta-name').value,
+            objetivo: document.getElementById('meta-objetivo').value,
+            actual: 0
+        })
+    });
+
+    if (formValues && formValues.nombre && formValues.objetivo) {
+        let metas = JSON.parse(localStorage.getItem('metasAhorro')) || [];
+        metas.push(formValues);
+        localStorage.setItem('metasAhorro', JSON.stringify(metas));
+        renderMetas();
+    }
+};
+
+window.renderMetas = () => {
+    const contenedor = document.getElementById('listaMetas');
+    const metas = JSON.parse(localStorage.getItem('metasAhorro')) || [];
+    
+    contenedor.innerHTML = metas.map((m, index) => {
+        const porc = Math.min((m.actual / m.objetivo) * 100, 100).toFixed(0);
+        return `
+            <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-3xl border border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-xs font-bold">${m.nombre}</p>
+                    <p class="text-[10px] font-black text-emerald-500">${porc}%</p>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full mb-3 overflow-hidden">
+                    <div class="bg-emerald-500 h-full transition-all duration-1000" style="width: ${porc}%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p class="text-[9px] text-gray-500">RD$ ${m.actual.toLocaleString()} / ${parseInt(m.objetivo).toLocaleString()}</p>
+                    <button onclick="aportarAMeta(${index})" class="text-[9px] font-black text-emerald-500 uppercase tracking-widest">+ Aportar</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.aportarAMeta = async (index) => {
+    const { value: monto } = await Swal.fire({
+        title: '¿Cuánto quieres ahorrar?',
+        input: 'number',
+        inputPlaceholder: '0.00',
+        background: '#1f2937',
+        color: '#fff'
+    });
+
+    if (monto > 0) {
+        let metas = JSON.parse(localStorage.getItem('metasAhorro'));
+        metas[index].actual = parseFloat(metas[index].actual) + parseFloat(monto);
+        localStorage.setItem('metasAhorro', JSON.stringify(metas));
+        
+        if (metas[index].actual >= metas[index].objetivo) {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#10b981', '#34d399', '#ffffff']
+            });
+            Swal.fire('¡META LOGRADA!', `Has completado tu ahorro para: ${metas[index].nombre}`, 'success');
+        }
+
+        // Registrar el "ahorro" como un gasto en Firebase para que salga del balance
+        await addDoc(collection(db, "usuarios", userUID, "transacciones"), {
+            desc: `Ahorro: ${metas[index].nombre}`,
+            monto: parseFloat(monto),
+            tipo: "egreso", // Se marca como egreso porque ya no está "disponible" para gastar
+            cat: "Ahorros",
+            cuenta: "Efectivo",
+            fecha: serverTimestamp()
+        });
+        
+        renderMetas();
+    }
+};
+window.actualizarIA = (transacciones) => {
+    const consejoEl = document.getElementById('ia-consejo');
+    const egresos = transacciones.filter(t => t.tipo === 'egreso');
+    const totalGastado = egresos.reduce((acc, t) => acc + t.monto, 0);
+    
+    // Simulación de "Análisis de IA"
+    setTimeout(() => {
+        if (totalGastado > totalEfectivo) {
+            consejoEl.innerText = "⚠️ ¡Atención! Tus gastos del mes superan tu efectivo actual. Considera reducir gastos de 'Servicios'.";
+        } else if (totalEfectivo > 10000) {
+            consejoEl.innerText = "🚀 Tienes un buen excedente de efectivo. Es un excelente momento para aportar más a tu Piggy Bank.";
+        } else if (egresos.length > 10) {
+            consejoEl.innerText = "💡 Has realizado muchos movimientos pequeños. Evita los 'Gastos Hormiga' para ahorrar más este mes.";
+        } else {
+            consejoEl.innerText = "✨ Tu comportamiento financiero es estable. Mantén ese ritmo de registro.";
+        }
+    }, 2000);
+};
+
+let currentPin = "";
+const correctPin = "1234"; // Aquí podrías dejar que el usuario lo configure
+
+window.pressPin = (num) => {
+    if (currentPin.length < 4) {
+        currentPin += num;
+        actualizarDots();
+        if (currentPin.length === 4) {
+            if (currentPin === correctPin) {
+                document.getElementById('pin-screen').classList.add('hidden');
+                currentPin = "";
+                actualizarDots();
+            } else {
+                Swal.fire({ title: 'PIN Incorrecto', icon: 'error', toast: true, position: 'top' });
+                currentPin = "";
+                actualizarDots();
+            }
+        }
+    }
+};
+
+function actualizarDots() {
+    const dots = document.querySelectorAll('#pin-dots div');
+    dots.forEach((dot, i) => {
+        dot.className = i < currentPin.length 
+            ? "w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_15px_#10b981]" 
+            : "w-4 h-4 rounded-full border-2 border-gray-600";
+    });
+}
+
+// Bloquear al cargar si la función está activa
+document.getElementById('pin-screen').classList.remove('hidden');
+
+window.descargarReporte = () => {
+    Swal.fire({
+        title: 'Generando Reporte...',
+        html: 'Preparando tu estado de cuenta PDF',
+        timer: 2000,
+        didOpen: () => { Swal.showLoading(); }
+    }).then(() => {
+        window.print(); // Forma nativa y limpia de exportar a PDF en móviles
+    });
+};
